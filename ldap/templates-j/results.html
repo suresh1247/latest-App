@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Operation Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-badge { font-weight: 500; }
+        .uptime { color: #666; font-size: 0.9em; }
+        th { white-space: nowrap; cursor: pointer; }
+        .service-list { max-height: 200px; overflow-y: auto; }
+        .alert-warning { background-color: #fff3cd; border-color: #ffeeba; }
+        th.sorted-asc::after { content: " ▲"; }
+        th.sorted-desc::after { content: " ▼"; }
+    </style>
+</head>
+<body class="container mt-5">
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="mb-4">{{ action|title }} Results</h1>
+<div class="dropdown">
+  <button class="btn btn-secondary rounded-circle d-flex justify-content-center align-items-center text-uppercase fw-bold"
+          style="width: 40px; height: 40px; font-size: 16px;"
+          id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+    {{ current_user.id[0] }}
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+    <li><h6 class="dropdown-header">Logged in as</h6></li>
+    <li><span class="dropdown-item-text fw-bold">{{ current_user.id }}</span></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Logout</a></li>
+  </ul>
+</div>
+
+</div>
+
+    <div class="d-flex align-items-center justify-content-start mb-3" style="gap: 10px;">
+        <div style="flex: 0 0 25%;">
+            <button class="btn btn-outline-secondary btn-sm w-100" id="addFilterBtn">+ Add Filter</button>
+        </div>
+        <div style="flex: 1;">
+            <input type="text" class="form-control" id="resultsFilter" placeholder="Global search...">
+        </div>
+    </div>
+
+    <div id="filterBox" class="card shadow-sm p-3 d-none" style="position: absolute; z-index: 1000; width: 300px; top: 130px; left: 20px;">
+        <div class="mb-2">
+            <label for="filterColumn">Choose column:</label>
+            <select id="filterColumn" class="form-select"></select>
+        </div>
+        <div id="filterOptions" class="mb-2" style="max-height: 200px; overflow-y: auto;"></div>
+        <div class="d-flex justify-content-between">
+            <button class="btn btn-sm btn-secondary" id="closeFilterBtn">Cancel</button>
+            <button class="btn btn-sm btn-primary" id="applyFilterBtn">Done</button>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Status</th>
+                        {% if action in ["reboot", "apply_patches_and_reboot"] %}
+                        <th>Uptime</th>
+                        {% endif %}
+                        <th>Artifacts</th>
+                        {% if action in ["reboot", "apply_patches_and_reboot"] %}
+                        <th>Service Status</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result[0] }}</td>
+                        <td><span class="status-badge" style="color: {{ result[2] }}">{{ result[1] }}</span></td>
+                        {% if action in ["reboot", "apply_patches_and_reboot"] %}
+                        <td class="uptime">{{ result[3] }}</td>
+                        {% endif %}
+                        <td>
+                            {% if result[4] %}
+                            <a href="/download/{{ result[4] }}" class="btn btn-sm btn-outline-secondary">📥 Download Logs</a>
+                            {% else %}
+                            <span class="text-muted">N/A</span>
+                            {% endif %}
+                        </td>
+                        {% if action in ["reboot", "apply_patches_and_reboot"] %}
+                        <td>
+                            {% if result[5] %}
+                                {% if result[5] == ["---"] %}
+                                    <span class="text-muted">---</span>
+                                {% else %}
+                                    <div class="alert alert-warning p-2">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="fw-bold">Failed Services:</span>
+                                            <span class="badge bg-danger">{{ result[5]|length }}</span>
+                                        </div>
+                                        <div class="service-list mt-2">
+                                            <ul class="mb-0">
+                                                {% for service in result[5] %}
+                                                <li class="text-danger">{{ service }} <span class="ms-2">❌</span></li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <div class="alert alert-success p-2">✅ All services running normally</div>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+	    <div class="d-flex justify-content-between align-items-center mt-4">
+   	 <a href="/" class="btn btn-primary">🏠 Return to Home</a>
+   	 <button class="btn rounded-circle d-flex justify-content-center align-items-center"
+            style="width: 60px; height: 60px; font-size: 2.0rem;"
+            onclick="downloadTableAsCSV()" title="Download CSV">
+       	 ⬇️
+	    </button>
+</div>
+
+        </div>
+    </div>
+
+    <script>
+        const resultsFilter = document.getElementById('resultsFilter');
+        const addFilterBtn = document.getElementById('addFilterBtn');
+        const filterBox = document.getElementById('filterBox');
+        const filterColumn = document.getElementById('filterColumn');
+        const filterOptions = document.getElementById('filterOptions');
+        const applyFilterBtn = document.getElementById('applyFilterBtn');
+        const closeFilterBtn = document.getElementById('closeFilterBtn');
+        const table = document.querySelector('table');
+        const headers = table.querySelectorAll('thead th');
+        const tbody = table.querySelector('tbody');
+
+        resultsFilter.addEventListener('input', function () {
+            const filter = this.value.toLowerCase();
+            tbody.querySelectorAll('tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+            });
+        });
+
+        addFilterBtn.addEventListener('click', () => {
+            filterBox.classList.toggle('d-none');
+            if (filterColumn.options.length === 0) {
+                headers.forEach((th, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.text = th.textContent;
+                    filterColumn.appendChild(opt);
+                });
+            }
+            filterColumn.dispatchEvent(new Event('change'));
+        });
+
+        closeFilterBtn.addEventListener('click', () => {
+            filterBox.classList.add('d-none');
+        });
+
+        filterColumn.addEventListener('change', () => {
+            const colIndex = parseInt(filterColumn.value);
+            const values = new Set();
+            Array.from(tbody.rows).forEach(row => {
+                const cell = row.cells[colIndex];
+                if (cell) values.add(cell.textContent.trim());
+            });
+
+            filterOptions.innerHTML = '';
+            [...values].sort().forEach(value => {
+                const id = 'filter-' + value.replace(/\s+/g, '-');
+                filterOptions.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${value}" id="${id}" checked>
+                        <label class="form-check-label" for="${id}">${value}</label>
+                    </div>`;
+            });
+        });
+
+        applyFilterBtn.addEventListener('click', () => {
+            const colIndex = parseInt(filterColumn.value);
+            const checkedValues = Array.from(filterOptions.querySelectorAll('input:checked'))
+                                       .map(cb => cb.value.toLowerCase());
+
+            Array.from(tbody.rows).forEach(row => {
+                const cell = row.cells[colIndex];
+                const cellText = cell ? cell.textContent.trim().toLowerCase() : '';
+                row.style.display = checkedValues.includes(cellText) ? '' : 'none';
+            });
+
+            filterBox.classList.add('d-none');
+        });
+
+        document.querySelectorAll('th').forEach(header => {
+            header.addEventListener('click', function () {
+                const index = Array.from(header.parentNode.children).indexOf(header);
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const currentSort = header.classList.contains('sorted-asc') ? 'asc' :
+                                    header.classList.contains('sorted-desc') ? 'desc' : '';
+                document.querySelectorAll('th').forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
+                const newSort = currentSort === 'asc' ? 'desc' : 'asc';
+                header.classList.add(`sorted-${newSort}`);
+
+                rows.sort((a, b) => {
+                    const aText = a.children[index]?.textContent.trim().toLowerCase() || '';
+                    const bText = b.children[index]?.textContent.trim().toLowerCase() || '';
+                    return newSort === 'asc' ? aText.localeCompare(bText) : bText.localeCompare(aText);
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+	
+
+function downloadTableAsCSV() {
+    const table = document.querySelector('table');
+    let csvContent = '';
+    for (const row of table.rows) {
+        const rowData = Array.from(row.cells).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`);
+        csvContent += rowData.join(',') + '\n';
+    }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'operation_results.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
+

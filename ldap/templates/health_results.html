@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Health Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .yes { background-color: lightgreen !important; }
+        .no { background-color: #FF7276 !important; }
+        .unreachable { background-color: orange !important; }
+        th { white-space: nowrap; cursor: pointer; }
+        th.sorted-asc::after { content: " ▲"; }
+        th.sorted-desc::after { content: " ▼"; }
+        td, th { font-size: 0.85rem; text-align: center; vertical-align: middle; }
+        table { width: 100%; }
+    </style>
+</head>
+<body class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-4">Server Health Report</h1>
+	<div class="dropdown">
+ 	 <button class="btn btn-secondary rounded-circle d-flex justify-content-center align-items-center text-uppercase fw-bold"
+          style="width: 40px; height: 40px; font-size: 16px;"
+          id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+  	  {{ current_user.id[0] }}
+ 	 </button>
+ 	 <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+   	 <li><h6 class="dropdown-header">Logged in as</h6></li>
+   	 <li><span class="dropdown-item-text fw-bold">{{ current_user.id }}</span></li>
+  	  <li><hr class="dropdown-divider"></li>
+   	 <li><a class="dropdown-item text-danger" href="{{ url_for('logout') }}">Logout</a></li>
+	  </ul>
+	</div>
+    </div>
+
+    <div class="d-flex align-items-center justify-content-start mb-3" style="gap: 10px;">
+        <div style="flex: 0 0 25%;">
+            <button class="btn btn-outline-secondary btn-sm w-100" id="addFilterBtn">+ Add Filter</button>
+        </div>
+        <div style="flex: 1;">
+            <input type="text" class="form-control" id="resultsFilter" placeholder="Global search...">
+        </div>
+    </div>
+
+    <div id="filterBox" class="card shadow-sm p-3 d-none" style="position: absolute; z-index: 1000; width: 300px; top: 130px; left: 20px;">
+        <div class="mb-2">
+            <label for="filterColumn">Choose column:</label>
+            <select id="filterColumn" class="form-select"></select>
+        </div>
+        <div id="filterOptions" class="mb-2" style="max-height: 200px; overflow-y: auto;"></div>
+        <div class="d-flex justify-content-between">
+            <button class="btn btn-sm btn-secondary" id="closeFilterBtn">Cancel</button>
+            <button class="btn btn-sm btn-primary" id="applyFilterBtn">Done</button>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <table class="table table-bordered table-striped table-hover" id="healthTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Server IP</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+			<th>Is server <br> Up-to-date</th>
+			<th>Reboot<br> Required</th>
+                        <th>Disk</th>
+                        <th>Inodes</th>
+                        <th>Load</th>
+                        <th>Firewall</th>
+                        <th>SSH</th>
+                        <th>Uptime</th>
+                        <th>Kernel</th>
+                        <th>Time Sync</th>
+                        <th>fstab Match</th>
+                        <th>SELinux</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.ip }}</td>
+                        {% if not result.reachable %}
+                        <td colspan="14" class="unreachable">Unreachable</td>
+                        {% else %}
+                        <td class="{{ 'yes' if result.cpu_usage == 'Yes' else 'no' }}">{{ result.cpu_usage }}</td>
+                        <td class="{{ 'yes' if result.memory_usage == 'Yes' else 'no' }}">{{ result.memory_usage }}</td>
+                        <td class="{{ 'yes' if result.compliance == 'Yes' else 'no' }}">{{ result.compliance }}</td>
+                        <td class="{{ 'yes' if result.reboot_required == 'No' else 'no' }}">{{ result.reboot_required }}</td>
+                        <td class="{{ 'yes' if result.disk_usage == 'Yes' else 'no' }}">{{ result.disk_usage }}</td>
+                        <td class="{{ 'yes' if result.disk_inodes == 'Yes' else 'no' }}">{{ result.disk_inodes }}</td>
+                        <td class="{{ 'yes' if result.load_average == 'Yes' else 'no' }}">{{ result.load_average }}</td>
+                        <td class="{{ 'yes' if result.firewall_rules == 'Yes' else 'no' }}">{{ result.firewall_rules }}</td>
+                        <td class="{{ 'yes' if result.ssh_config == 'Yes' else 'no' }}">{{ result.ssh_config }}</td>
+                        <td class="{{ 'yes' if result.uptime == 'Yes' else 'no' }}">{{ result.uptime }}</td>
+                        <td>{{ result.kernel_version }}</td>
+                        <td class="{{ 'yes' if result.time_sync == 'Yes' else 'no' }}">{{ result.time_sync }}</td>
+                        <td class="{{ 'yes' if result.fstab_matches == 'Yes' else 'no' }}">{{ result.fstab_matches }}</td>
+                        <td class="{{ 'yes' if result.selinux_status == 'Yes' else 'no' }}">{{ result.selinux_status }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+	 <div class="d-flex justify-content-between align-items-center mt-4">
+         <a href="/" class="btn btn-primary">🏠 Return to Home</a>
+         <button class="btn rounded-circle d-flex justify-content-center align-items-center"
+            style="width: 60px; height: 60px; font-size: 2.0rem;"
+            onclick="downloadTableAsCSV()" title="Download CSV">
+         ⬇️
+            </button>
+	</div>
+
+        </div>
+    </div>
+
+    <script>
+        const resultsFilter = document.getElementById('resultsFilter');
+        const addFilterBtn = document.getElementById('addFilterBtn');
+        const filterBox = document.getElementById('filterBox');
+        const filterColumn = document.getElementById('filterColumn');
+        const filterOptions = document.getElementById('filterOptions');
+        const applyFilterBtn = document.getElementById('applyFilterBtn');
+        const closeFilterBtn = document.getElementById('closeFilterBtn');
+        const table = document.querySelector('table');
+        const headers = table.querySelectorAll('thead th');
+        const tbody = table.querySelector('tbody');
+
+        resultsFilter.addEventListener('input', function () {
+            const filter = this.value.toLowerCase();
+            tbody.querySelectorAll('tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+            });
+        });
+
+        addFilterBtn.addEventListener('click', () => {
+            filterBox.classList.toggle('d-none');
+            if (filterColumn.options.length === 0) {
+                headers.forEach((th, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.text = th.textContent;
+                    filterColumn.appendChild(opt);
+                });
+            }
+            filterColumn.dispatchEvent(new Event('change'));
+        });
+
+        closeFilterBtn.addEventListener('click', () => {
+            filterBox.classList.add('d-none');
+        });
+
+        filterColumn.addEventListener('change', () => {
+            const colIndex = parseInt(filterColumn.value);
+            const values = new Set();
+            Array.from(tbody.rows).forEach(row => {
+                const cell = row.cells[colIndex];
+                if (cell) values.add(cell.textContent.trim());
+            });
+
+            filterOptions.innerHTML = '';
+            [...values].sort().forEach(value => {
+                const id = 'filter-' + value.replace(/\s+/g, '-');
+                filterOptions.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${value}" id="${id}" checked>
+                        <label class="form-check-label" for="${id}">${value}</label>
+                    </div>`;
+            });
+        });
+
+        applyFilterBtn.addEventListener('click', () => {
+            const colIndex = parseInt(filterColumn.value);
+            const checkedValues = Array.from(filterOptions.querySelectorAll('input:checked'))
+                                       .map(cb => cb.value.toLowerCase());
+
+            Array.from(tbody.rows).forEach(row => {
+                const cell = row.cells[colIndex];
+                const cellText = cell ? cell.textContent.trim().toLowerCase() : '';
+                row.style.display = checkedValues.includes(cellText) ? '' : 'none';
+            });
+
+            filterBox.classList.add('d-none');
+        });
+
+        document.querySelectorAll('th').forEach(header => {
+            header.addEventListener('click', function () {
+                const index = Array.from(header.parentNode.children).indexOf(header);
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const currentSort = header.classList.contains('sorted-asc') ? 'asc' :
+                                    header.classList.contains('sorted-desc') ? 'desc' : '';
+                document.querySelectorAll('th').forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
+                const newSort = currentSort === 'asc' ? 'desc' : 'asc';
+                header.classList.add(`sorted-${newSort}`);
+
+                rows.sort((a, b) => {
+                    const aText = a.children[index]?.textContent.trim().toLowerCase() || '';
+                    const bText = b.children[index]?.textContent.trim().toLowerCase() || '';
+                    return newSort === 'asc' ? aText.localeCompare(bText) : bText.localeCompare(aText);
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+function downloadTableAsCSV() {
+    const table = document.querySelector('table');
+    let csvContent = '';
+    for (const row of table.rows) {
+        const rowData = Array.from(row.cells).map(cell => `"${cell.innerText.replace(/"/g, '""')}"`);
+        csvContent += rowData.join(',') + '\n';
+    }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'health_results.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>
+

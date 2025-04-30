@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .tag-filter { max-width: 300px; margin-bottom: 20px; }
+        .tag-pill { margin: 2px; cursor: pointer; }
+        .server-table th { vertical-align: middle; }
+        .hidden { display: none; }
+        .form-section {
+            position: relative;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        .form-container {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            border-radius: 0.25rem;
+            z-index: 1000;
+            min-width: 600px;
+        }
+   .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        z-index: 9999;
+        display: none;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .spinner {
+        width: 3rem;
+        height: 3rem;
+        border: 5px solid #f3f3f3;
+        border-top: 5px solid #3498db;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        margin-top: 1rem;
+        font-weight: bold;
+        color: #2c3e50;
+    }
+        th.sorted-asc::after { content: " ▲"; }
+        th.sorted-desc::after { content: " ▼"; }
+
+    </style>
+</head>
+<body class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Server Management</h1>
+        <div>
+	<span class="me-3">Logged in as: {{ current_user.id }}</span>
+
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-danger">Logout</a>
+        </div>
+    </div>
+    <!-- Button Container -->
+    <div class="d-flex gap-2 mb-3">
+        <!-- Add Server Section -->
+        <div class="form-section">
+            <button onclick="toggleSection('addServerForm', this)" class="btn btn-primary">Add New Server</button>
+            <div id="addServerForm" class="hidden form-container">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h2 class="card-title">Add New Server</h2>
+                        <form method="post" action="{{ url_for('add_server') }}">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="ip" placeholder="IP Address" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="hostname" placeholder="Hostname (optional)">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="tags" placeholder="Tags (comma separated)">
+                                </div>
+                                <div class="col-md-12">
+                                    <button type="submit" class="btn btn-primary">Add Server</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Upload Section -->
+        <div class="form-section">
+            <button onclick="toggleSection('bulkUploadSection', this)" class="btn btn-secondary">Bulk Upload</button>
+            <div id="bulkUploadSection" class="hidden form-container">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Bulk Upload</h5>
+                        <form method="post" action="{{ url_for('bulk_upload') }}" enctype="multipart/form-data">
+                            <div class="row g-3">
+                                <div class="col-md-8">
+                                    <textarea class="form-control" name="bulk_servers"
+                                        placeholder="Enter servers (one per line, format: ip,hostname,tags)"
+                                        rows="3"></textarea>
+                                    <small class="text-muted">Or upload CSV:</small>
+                                    <input type="file" class="form-control" name="csv_file" accept=".csv">
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="submit" class="btn btn-secondary">Upload Servers</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Selected Button -->
+        <button 
+            id="deleteSelected" 
+            class="btn btn-danger" 
+            onclick="handleDeleteSelected()"
+            disabled
+        >
+            Delete Selected
+        </button>
+    </div>
+
+    <!-- Server List Section -->
+    <div id="serverListSection" class="{{ 'hidden' if not servers else '' }}">
+        <div style="display: flex; gap: 20px; align-items: flex-start; margin-bottom: 1rem;">
+		        <div style="flex: 0 0 25%;">
+         		   <button class="btn btn-outline-secondary btn-sm w-100" id="addFilterBtn">+ Add Filter</button>
+		        </div>
+
+            <div class="tag-filter" style="flex: 0 0 25%;">
+                <input type="text" id="tagFilter" class="form-control" placeholder="Filter by tag...">
+                <div id="tagList" class="mt-2"></div>
+            </div>
+            <div style="flex: 1;">
+                <input type="text" class="form-control" id="resultsFilter" placeholder="Filter results...">
+            </div>
+        </div>
+	    <div id="filterBox" class="card shadow-sm p-3 d-none" style="position: absolute; z-index: 1000; width: 300px; top: 130px; left: 20px;">
+        <div class="mb-2">
+            <label for="filterColumn">Choose column:</label>
+            <select id="filterColumn" class="form-select"></select>
+        </div>
+        <div id="filterOptions" class="mb-2" style="max-height: 200px; overflow-y: auto;"></div>
+        <div class="d-flex justify-content-between">
+            <button class="btn btn-sm btn-secondary" id="closeFilterBtn">Cancel</button>
+            <button class="btn btn-sm btn-primary" id="applyFilterBtn">Done</button>
+        </div>
+    </div>
+
+
+        <form id="serverActionForm" method="post">
+            <table class="table server-table">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40px;">
+                            <input type="checkbox" class="select-all-checkbox" id="selectAll">
+                        </th>
+                        <th>IP Address</th>
+                        <th>Hostname</th>
+                        <th>Tags</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="serverTable">
+                    {% for server in servers %}
+                    <tr data-tags="{{ server.tags.lower() }}">
+                        <td><input type="checkbox" name="server_ips" value="{{ server.ip }}"></td>
+                        <td>{{ server.ip }}</td>
+                        <td>{{ server.hostname }}</td>
+                        <td>
+                            {% for tag in server.tags.split(',') if tag %}
+                            <span class="badge bg-secondary tag-pill">{{ tag }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('delete_server', server_id=server.id) }}" 
+                               class="btn btn-sm btn-danger"
+                               onclick="return confirm('Are you sure?')">Delete</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+	    <div class="action-buttons">
+    <button type="button" class="btn btn-warning" onclick="submitAction('reboot')">Reboot Selected</button>
+    <button type="button" class="btn btn-danger" onclick="submitAction('shutdown')">Shutdown Selected</button>
+    <button type="button" class="btn btn-info" onclick="submitAction('check_patches')">Check Updates</button>
+    <button type="button" class="btn btn-success" onclick="submitAction('apply_patches')">Apply Patches</button>
+    <button type="button" class="btn btn-primary" onclick="submitAction('apply_patches_and_reboot')">Update & Reboot</button>
+    <button type="button" class="btn btn-info" onclick="submitAction('health_check')">Run Health Check</button>
+</div>
+<!--
+            <div class="action-buttons">
+                <button type="button" class="btn btn-warning" onclick="submitAction('reboot')">Reboot Selected</button>
+                <button type="button" class="btn btn-danger" onclick="submitAction('shutdown')">Shutdown Selected</button>
+                <button type="button" class="btn btn-info" onclick="submitAction('check_patches')">Check Updates</button>
+                <button type="button" class="btn btn-success" onclick="submitAction('apply_patches')">Apply Patches</button>
+                <button type="button" class="btn btn-primary" onclick="submitAction('apply_patches_and_reboot')">Update & Reboot</button>
+	    </div> -->
+        </form>
+    </div>
+ 
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="text-center">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingMessage">Processing your request...</div>
+    </div>
+</div>
+<script>
+    let activeSection = null;
+    let allTags = new Set();
+
+    function toggleSection(sectionId, button) {
+        const section = document.getElementById(sectionId);
+        if (activeSection === sectionId) {
+            section.classList.toggle('hidden');
+            button.textContent = button.textContent.includes('Hide') 
+                ? button.textContent.replace('Hide', 'Show')
+                : button.textContent.replace('Show', 'Hide');
+            activeSection = section.classList.contains('hidden') ? null : sectionId;
+        } else {
+            if (activeSection) {
+                const prevSection = document.getElementById(activeSection);
+                const prevButton = document.querySelector(`button[onclick*="${activeSection}"]`);
+                prevSection.classList.add('hidden');
+                prevButton.textContent = prevButton.textContent.replace('Hide', 'Show');
+            }
+            section.classList.remove('hidden');
+            button.textContent = button.textContent.replace('Show', 'Hide');
+            activeSection = sectionId;
+        }
+    }
+
+    function handleDeleteSelected() {
+        const selectedServers = Array.from(
+            document.querySelectorAll('input[name="server_ips"]:checked')
+        ).map(checkbox => checkbox.value);
+
+        if (selectedServers.length === 0) return;
+
+        if (confirm(`Are you sure you want to delete ${selectedServers.length} selected server(s)?`)) {
+            const form = document.getElementById('serverActionForm');
+            form.action = "{{ url_for('handle_action') }}";
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'delete';
+            form.appendChild(actionInput);
+            form.submit();
+        }
+    }
+
+    function updateDeleteButtonState() {
+        const anyChecked = Array.from(
+            document.querySelectorAll('input[name="server_ips"]:checked')
+        ).length > 0;
+        document.getElementById('deleteSelected').disabled = !anyChecked;
+    }
+
+    function addCheckboxListeners() {
+        document.querySelectorAll('input[name="server_ips"]').forEach(checkbox => {
+            checkbox.removeEventListener('change', updateDeleteButtonState);
+            checkbox.addEventListener('change', updateDeleteButtonState);
+        });
+    }
+
+    function updateTagCloud() {
+        tagList.innerHTML = Array.from(allTags).map(tag => `
+            <span class="badge bg-primary tag-pill" 
+                  onclick="filterByTag('${tag}')">${tag}</span>
+        `).join('');
+    }
+
+    function filterByTag(tag) {
+        tagFilter.value = tag;
+        filterServers();
+    }
+
+    function filterServers() {
+        const filter = tagFilter.value.toLowerCase();
+        serverTable.querySelectorAll('tr').forEach(row => {
+            const tags = row.dataset.tags || '';
+            row.style.display = tags.includes(filter) ? '' : 'none';
+        });
+        addCheckboxListeners();
+        updateDeleteButtonState();
+    }
+
+    document.getElementById('resultsFilter').addEventListener('input', function() {
+        const filter = this.value.toLowerCase();
+        document.querySelectorAll('#serverTable tr').forEach(row => {
+            row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+        });
+        addCheckboxListeners();
+        updateDeleteButtonState();
+    });
+
+    document.getElementById('selectAll').addEventListener('click', function(e) {
+        const checkboxes = document.querySelectorAll('#serverTable tr:not([style*="display: none"]) input[name="server_ips"]');
+        checkboxes.forEach(cb => cb.checked = e.target.checked);
+        updateDeleteButtonState();
+    });
+
+    const tagFilter = document.getElementById('tagFilter');
+    const serverTable = document.getElementById('serverTable');
+    const tagList = document.getElementById('tagList');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('[data-tags]').forEach(row => {
+            row.dataset.tags.split(',').forEach(tag => tag && allTags.add(tag));
+        });
+        updateTagCloud();
+        addCheckboxListeners();
+        updateDeleteButtonState();
+    });
+
+    tagFilter.addEventListener('input', filterServers);
+
+function submitAction(action) {
+    const form = document.getElementById('serverActionForm');
+    const selected = document.querySelectorAll('input[name="server_ips"]:checked');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    const loadingMessage = document.getElementById('loadingMessage');
+
+    if (!selected.length) {
+        alert("Please select at least one server.");
+        return;
+    }
+
+    // Set loading message based on action
+    const actionMessages = {
+        'health_check': 'Running health checks...',
+        'check_patches': 'Checking for updates...',
+        'apply_patches': 'Applying patches...',
+        'apply_patches_and_reboot': 'Updating and rebooting...',
+        'delete': 'Deleting servers...'
+    };
+    
+    // Only show overlay for non-confirmation actions
+    if (!['reboot', 'shutdown'].includes(action)) {
+        loadingMessage.textContent = actionMessages[action] || 'Processing your request...';
+        loadingOverlay.style.display = 'flex';
+    }
+
+    form.querySelectorAll('input[type="hidden"]').forEach(e => e.remove());
+
+    if (action === 'health_check') {
+        selected.forEach(checkbox => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'server_ips';
+            input.value = checkbox.value;
+            form.appendChild(input);
+        });
+        form.action = "{{ url_for('health_check') }}";
+        form.method = 'post';
+    } else {
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = action;
+        form.appendChild(actionInput);
+
+        selected.forEach(checkbox => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'server_ips';
+            input.value = checkbox.value;
+            form.appendChild(input);
+        });
+
+        form.action = "{{ url_for('handle_action') }}";
+        form.method = 'post';
+    }
+
+    // Handle immediate actions vs confirmation-required actions
+    if (['reboot', 'shutdown'].includes(action)) {
+        // Submit without showing overlay - will show on confirmation page
+        form.submit();
+    } else {
+        // Show overlay for direct actions
+        setTimeout(() => {
+            form.submit();
+        }, 100);
+    }
+}
+
+window.addEventListener('load', () => {
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    if (loadingOverlay.style.display === 'flex') {
+        loadingOverlay.style.display = 'none';
+    }
+});
+
+
+
+
+        const resultsFilter = document.getElementById('resultsFilter');
+        const addFilterBtn = document.getElementById('addFilterBtn');
+        const filterBox = document.getElementById('filterBox');
+        const filterColumn = document.getElementById('filterColumn');
+        const filterOptions = document.getElementById('filterOptions');
+        const applyFilterBtn = document.getElementById('applyFilterBtn');
+        const closeFilterBtn = document.getElementById('closeFilterBtn');
+        const table = document.querySelector('table');
+        const headers = table.querySelectorAll('thead th');
+        const tbody = table.querySelector('tbody');
+
+        resultsFilter.addEventListener('input', function () {
+            const filter = this.value.toLowerCase();
+            tbody.querySelectorAll('tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+            });
+        });
+
+        addFilterBtn.addEventListener('click', () => {
+            filterBox.classList.toggle('d-none');
+            if (filterColumn.options.length === 0) {
+                headers.forEach((th, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = idx;
+                    opt.text = th.textContent;
+                    filterColumn.appendChild(opt);
+                });
+            }
+            filterColumn.dispatchEvent(new Event('change'));
+        });
+
+        closeFilterBtn.addEventListener('click', () => {
+            filterBox.classList.add('d-none');
+        });
+
+        filterColumn.addEventListener('change', () => {
+            const colIndex = parseInt(filterColumn.value);
+            const values = new Set();
+            Array.from(tbody.rows).forEach(row => {
+                const cell = row.cells[colIndex];
+                if (cell) values.add(cell.textContent.trim());
+            });
+
+            filterOptions.innerHTML = '';
+            [...values].sort().forEach(value => {
+                const id = 'filter-' + value.replace(/\s+/g, '-');
+                filterOptions.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${value}" id="${id}" checked>
+                        <label class="form-check-label" for="${id}">${value}</label>
+                    </div>`;
+            });
+        });
+
+        applyFilterBtn.addEventListener('click', () => {
+            const colIndex = parseInt(filterColumn.value);
+            const checkedValues = Array.from(filterOptions.querySelectorAll('input:checked'))
+                                       .map(cb => cb.value.toLowerCase());
+
+            Array.from(tbody.rows).forEach(row => {
+                const cell = row.cells[colIndex];
+                const cellText = cell ? cell.textContent.trim().toLowerCase() : '';
+                row.style.display = checkedValues.includes(cellText) ? '' : 'none';
+            });
+
+            filterBox.classList.add('d-none');
+        });
+
+        document.querySelectorAll('th').forEach(header => {
+            header.addEventListener('click', function () {
+                const index = Array.from(header.parentNode.children).indexOf(header);
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+                const currentSort = header.classList.contains('sorted-asc') ? 'asc' :
+                                    header.classList.contains('sorted-desc') ? 'desc' : '';
+                document.querySelectorAll('th').forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
+                const newSort = currentSort === 'asc' ? 'desc' : 'asc';
+                header.classList.add(`sorted-${newSort}`);
+
+                rows.sort((a, b) => {
+                    const aText = a.children[index]?.textContent.trim().toLowerCase() || '';
+                    const bText = b.children[index]?.textContent.trim().toLowerCase() || '';
+                    return newSort === 'asc' ? aText.localeCompare(bText) : bText.localeCompare(aText);
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+
+</script>
+</body>
+</html>
+

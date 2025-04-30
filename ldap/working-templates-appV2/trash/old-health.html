@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Health Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .yes { background-color: lightgreen !important; }
+        .no { background-color: lightcoral !important; }
+        .unreachable { background-color: orange !important; }
+        th { white-space: nowrap; cursor: pointer; }
+        th.sorted-asc::after { content: " ▲"; }
+        th.sorted-desc::after { content: " ▼"; }
+        td, th { font-size: 0.85rem; text-align: center; vertical-align: middle; border: 1px solid black; }
+        table { width: 100%; }
+    </style>
+</head>
+<body class="container mt-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-4">Server Health Report</h1>
+        <div>
+            <span class="me-3">Logged in as: {{ current_user.id }}</span>
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-danger">Logout</a>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <input type="text" class="form-control" id="filterInput" placeholder="Filter results...">
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            <table class="table table-bordered table-striped table-hover" id="healthTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>Server IP</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                        <th>Up-to-date</th>
+                        <th>Reboot</th>
+                        <th>Disk</th>
+                        <th>Inodes</th>
+                        <th>Load</th>
+                        <th>Firewall</th>
+                        <th>SSH</th>
+                        <th>Uptime</th>
+                        <th>Kernel</th>
+                        <th>Time Sync</th>
+                        <th>fstab Match</th>
+                        <th>SELinux</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for result in results %}
+                    <tr>
+                        <td>{{ result.ip }}</td>
+                        {% if not result.reachable %}
+                            <td colspan="14" class="unreachable">Unreachable</td>
+                        {% else %}
+                            <td class="{{ 'yes' if result.cpu_usage == 'Yes' else 'no' }}">{{ result.cpu_usage }}</td>
+                            <td class="{{ 'yes' if result.memory_usage == 'Yes' else 'no' }}">{{ result.memory_usage }}</td>
+                            <td class="{{ 'yes' if result.compliance == 'Yes' else 'no' }}">{{ result.compliance }}</td>
+                            <td class="{{ 'yes' if result.reboot_required == 'No' else 'no' }}">{{ result.reboot_required }}</td>
+                            <td class="{{ 'yes' if result.disk_usage == 'Yes' else 'no' }}">{{ result.disk_usage }}</td>
+                            <td class="{{ 'yes' if result.disk_inodes == 'Yes' else 'no' }}">{{ result.disk_inodes }}</td>
+                            <td class="{{ 'yes' if result.load_average == 'Yes' else 'no' }}">{{ result.load_average }}</td>
+                            <td class="{{ 'yes' if result.firewall_rules == 'Yes' else 'no' }}">{{ result.firewall_rules }}</td>
+                            <td class="{{ 'yes' if result.ssh_config == 'Yes' else 'no' }}">{{ result.ssh_config }}</td>
+                            <td class="{{ 'yes' if result.uptime == 'Yes' else 'no' }}">{{ result.uptime }}</td>
+                            <td>{{ result.kernel_version }}</td>
+                            <td class="{{ 'yes' if result.time_sync == 'Yes' else 'no' }}">{{ result.time_sync }}</td>
+                            <td class="{{ 'yes' if result.fstab_matches == 'Yes' else 'no' }}">{{ result.fstab_matches }}</td>
+                            <td class="{{ 'yes' if result.selinux_status == 'Yes' else 'no' }}">{{ result.selinux_status }}</td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div class="mt-4">
+                <a href="/" class="btn btn-primary">🏠 Return to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Filter logic
+        document.getElementById('filterInput').addEventListener('input', function () {
+            const filter = this.value.toLowerCase();
+            document.querySelectorAll('#healthTable tbody tr').forEach(row => {
+                row.style.display = row.textContent.toLowerCase().includes(filter) ? '' : 'none';
+            });
+        });
+
+        // Sorting logic
+        document.querySelectorAll('#healthTable th').forEach(header => {
+            header.addEventListener('click', function () {
+                const table = header.closest('table');
+                const tbody = table.querySelector('tbody');
+                const index = Array.from(header.parentNode.children).indexOf(header);
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                const currentSort = header.classList.contains('sorted-asc') ? 'asc' :
+                                    header.classList.contains('sorted-desc') ? 'desc' : '';
+                table.querySelectorAll('th').forEach(th => th.classList.remove('sorted-asc', 'sorted-desc'));
+                const newSort = currentSort === 'asc' ? 'desc' : 'asc';
+                header.classList.add(`sorted-${newSort}`);
+
+                rows.sort((a, b) => {
+                    const aText = a.children[index]?.textContent.trim().toLowerCase() || '';
+                    const bText = b.children[index]?.textContent.trim().toLowerCase() || '';
+                    return newSort === 'asc' ? aText.localeCompare(bText) : bText.localeCompare(aText);
+                });
+
+                rows.forEach(row => tbody.appendChild(row));
+            });
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Health Report</title>
+    <style>
+        body { margin: 20px; font-family: Arial, sans-serif; }
+        table { 
+            width: 100%; 
+            border-collapse: collapse;
+            table-layout: fixed;
+            font-size: 0.78em;
+            border: 2px solid black;
+        }
+        th, td {
+            border: 1px solid black;
+            padding: 3px;
+            text-align: center;
+            white-space: normal;
+            line-height: 1.2;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            height: 40px;
+            vertical-align: middle;
+        }
+        .yes { background-color: lightgreen !important; }
+        .no { background-color: lightcoral !important; }
+        .unreachable { background-color: orange !important; }
+        
+        /* Column width adjustments 
+        th:nth-child(2), th:nth-child(3) { width: 75px; }
+        th:nth-child(4) { width: 90px; }
+        th:nth-child(5) { width: 85px; }
+        th:nth-child(6), th:nth-child(7) { width: 75px; }
+        th:nth-child(8) { width: 80px; }
+        th:nth-child(9) { width: 85px; }
+        th:nth-child(10) { width: 80px; }
+        th:nth-child(11) { width: 70px; }
+        th:nth-child(12) { width: 100px; }
+        th:nth-child(13) { width: 70px; }
+        th:nth-child(14) { width: 95px; }
+        th:nth-child(15) { width: 85px; } */
+    </style>
+</head>
+<body>
+	    <div class="card shadow">
+        <div class="card-body">
+
+    <h2>Server Health Report</h2>
+            <div>
+        <span class="me-3">Logged in as: {{ current_user.id }}</span>
+
+            <a href="{{ url_for('logout') }}" class="btn btn-sm btn-danger">Logout</a>
+        </div>
+
+    <table>
+        <tr>
+            <th>Server<br>IP</th>
+            <th>CPU<br>Usage</th>
+            <th>Memory<br>Usage</th>
+            <th>Up-<br>to-date</th>
+            <th>Reboot<br>Required</th>
+            <th>Disk<br>Usage</th>
+            <th>Disk<br>Inodes</th>
+            <th>Load<br>Average</th>
+            <th>Firewall<br>Rules</th>
+            <th>SSH<br>Config</th>
+            <th>Uptime</th>
+            <th>Kernel<br>Version</th>
+            <th>Time<br>Sync</th>
+            <th>fstab &<br>df Match</th>
+            <th>SELinux<br>Status</th>
+        </tr>
+        {% for result in results %}
+        <tr>
+            <td>{{ result.ip }}</td>
+            {% if not result.reachable %}
+                <td colspan="14" class="unreachable">Unreachable</td>
+            {% else %}
+                <td class="{{ 'yes' if result.cpu_usage == 'Yes' else 'no' }}">{{ result.cpu_usage }}</td>
+                <td class="{{ 'yes' if result.memory_usage == 'Yes' else 'no' }}">{{ result.memory_usage }}</td>
+                <td class="{{ 'yes' if result.compliance == 'Yes' else 'no' }}">{{ result.compliance }}</td>
+                <td class="{{ 'yes' if result.reboot_required == 'No' else 'no' }}">{{ result.reboot_required }}</td>
+                <td class="{{ 'yes' if result.disk_usage == 'Yes' else 'no' }}">{{ result.disk_usage }}</td>
+                <td class="{{ 'yes' if result.disk_inodes == 'Yes' else 'no' }}">{{ result.disk_inodes }}</td>
+                <td class="{{ 'yes' if result.load_average == 'Yes' else 'no' }}">{{ result.load_average }}</td>
+                <td class="{{ 'yes' if result.firewall_rules == 'Yes' else 'no' }}">{{ result.firewall_rules }}</td>
+                <td class="{{ 'yes' if result.ssh_config == 'Yes' else 'no' }}">{{ result.ssh_config }}</td>
+		<td class="{{ 'yes' if result.uptime == 'Yes' else 'no' }}">{{ result.uptime.split('up ')[1] if 'up' in result.uptime else result.uptime }}</td>
+                <td>{{ result.kernel_version }}</td>
+                <td class="{{ 'yes' if result.time_sync == 'Yes' else 'no' }}">{{ result.time_sync }}</td>
+                <td class="{{ 'yes' if result.fstab_matches == 'Yes' else 'no' }}">{{ result.fstab_matches }}</td>
+                <td class="{{ 'yes' if result.selinux_status == 'Yes' else 'no' }}">{{ result.selinux_status }}</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </table>
+                <div class="mt-4">
+                <a href="/" class="btn btn-primary">🏠 Return to Home</a>
+            </div>
+	</div>
+	    </div>
+</body>
+</html>

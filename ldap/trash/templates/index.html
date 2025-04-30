@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Server Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .tag-filter { max-width: 300px; margin-bottom: 20px; }
+        .tag-pill { margin: 2px; cursor: pointer; }
+        .server-table th { vertical-align: middle; }
+        .results-section { margin-top: 30px; }
+        .operation-status { margin-left: 10px; }
+    </style>
+</head>
+<body class="container mt-4">
+    <h1>Server Management</h1>
+    
+    <!-- Add Server Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h2 class="card-title">Add/Update Server</h2>
+            <form method="post" action="{{ url_for('add_server') }}">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="ip" placeholder="IP Address" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="hostname" placeholder="Hostname (optional)">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="username" placeholder="Username (default: suresh)">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="tags" placeholder="Tags (comma separated)">
+                    </div>
+                    <div class="col-md-12">
+                        <button type="submit" class="btn btn-primary">Save Server</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filter and Server List -->
+    <h2>Server List</h2>
+    <div class="tag-filter mb-3">
+        <input type="text" id="tagFilter" class="form-control" placeholder="Filter by tag...">
+        <div id="tagList" class="mt-2"></div>
+    </div>
+    
+    <form id="serverForm">
+        <table class="table server-table">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" class="select-all-checkbox" id="selectAll">
+                    </th>
+                    <th>IP Address</th>
+                    <th>Hostname</th>
+                    <th>Username</th>
+                    <th>Tags</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="serverTable">
+                {% for server in servers %}
+                <tr data-tags="{{ server.tags.lower() }}">
+                    <td><input type="checkbox" name="server_ips" value="{{ server.ip }}"></td>
+                    <td>{{ server.ip }}</td>
+                    <td>{{ server.hostname }}</td>
+                    <td>{{ server.username }}</td>
+                    <td>
+                        {% for tag in server.tags.split(',') if tag %}
+                        <span class="badge bg-secondary tag-pill">{{ tag }}</span>
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('delete_server', server_id=server.id) }}" 
+                           class="btn btn-sm btn-danger"
+                           onclick="return confirm('Are you sure?')">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="action-buttons mb-4">
+            <button type="button" class="btn btn-warning" data-action="reboot">Reboot Selected</button>
+            <button type="button" class="btn btn-danger" data-action="shutdown">Shutdown Selected</button>
+            <button type="button" class="btn btn-info" data-action="check_patches">Check Updates</button>
+            <button type="button" class="btn btn-success" data-action="apply_patches">Apply Patches</button>
+            <button type="button" class="btn btn-primary" data-action="apply_patches_and_reboot">Update & Reboot</button>
+        </div>
+    </form>
+
+    <!-- Progress Modal -->
+    <div class="modal fade" id="progressModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Operation Progress</h5>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-3 mb-0" id="progressText">Processing servers...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Container -->
+    <div id="resultsContainer" class="results-section"></div>
+
+    <script>
+        // Tag filtering functionality
+        const tagFilter = document.getElementById('tagFilter');
+        const serverTable = document.getElementById('serverTable');
+        const tagList = document.getElementById('tagList');
+        let allTags = new Set();
+
+        // Initialize tag cloud
+        document.querySelectorAll('[data-tags]').forEach(row => {
+            row.dataset.tags.split(',').forEach(tag => tag && allTags.add(tag));
+        });
+        updateTagCloud();
+
+        function updateTagCloud() {
+            tagList.innerHTML = Array.from(allTags).map(tag => `
+                <span class="badge bg-primary tag-pill" 
+                      onclick="filterByTag('${tag}')">${tag}</span>
+            `).join('');
+        }
+
+        function filterByTag(tag) {
+            tagFilter.value = tag;
+            filterServers();
+        }
+
+        function filterServers() {
+            const filter = tagFilter.value.toLowerCase();
+            serverTable.querySelectorAll('tr').forEach(row => {
+                const tags = row.dataset.tags || '';
+                row.style.display = tags.includes(filter) ? '' : 'none';
+            });
+        }
+
+        tagFilter.addEventListener('input', filterServers);
+
+        // Select all functionality
+        document.getElementById('selectAll').addEventListener('click', function(e) {
+            const visibleRows = Array.from(serverTable.querySelectorAll('tr:not([style*="none"])'));
+            visibleRows.forEach(row => {
+                row.querySelector('input[type="checkbox"]').checked = e.target.checked;
+            });
+        });
+
+        // Action button handling
+        document.querySelectorAll('[data-action]').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const action = e.target.dataset.action;
+                const selectedIps = Array.from(document.querySelectorAll('input[name="server_ips"]:checked'))
+                                       .map(cb => cb.value);
+
+                if (!selectedIps.length) {
+                    alert('Please select at least one server!');
+                    return;
+                }
+
+                if (['reboot', 'shutdown'].includes(action)) {
+                    if (!confirm(`Confirm ${action} for ${selectedIps.length} servers?`)) return;
+                }
+
+                const modal = new bootstrap.Modal('#progressModal');
+                modal.show();
+
+                try {
+                    const response = await fetch(`/process/${action}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: new URLSearchParams({
+                            server_ips: selectedIps,
+                            confirmation: 'yes'
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(await response.text());
+                    
+                    const results = await response.json();
+                    showResults(action, results);
+                } catch (error) {
+                    alert(`Operation failed: ${error.message}`);
+                } finally {
+                    modal.hide();
+                }
+            });
+        });
+
+        function showResults(action, results) {
+            const resultsHTML = `
+                <div class="card shadow mt-4">
+                    <div class="card-header">
+                        <h4 class="mb-0">${action.replace(/_/g, ' ').toUpperCase()} Results</h4>
+                    </div>
+                    <div class="card-body">
+                        ${results.map(result => `
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <strong>${result[0]}</strong>
+                                    <span class="text-muted">${result[3] || ''}</span>
+                                </div>
+                                <div>
+                                    <span class="badge" style="background-color: ${result[2]}">${result[1]}</span>
+                                    ${result[4] ? `
+                                    <a href="/download/${result[4]}" class="btn btn-sm btn-link">
+                                        Download Logs
+                                    </a>` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('resultsContainer').innerHTML = resultsHTML;
+        }
+    </script>
+</body>
+</html>

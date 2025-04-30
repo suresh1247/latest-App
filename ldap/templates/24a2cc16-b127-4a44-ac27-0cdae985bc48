@@ -1,0 +1,610 @@
+<!doctype html>
+<html class="no-js" lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=1024,maximum-scale=1.0,initial-scale=0">
+    <meta name="x-csrf-token" content="4807ca96afcdce35fc15ecdea528000b12e15e0f">
+    <meta name="base-cloudfront-url" content="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/">
+    
+    <title>AH Brand Center</title>
+    <link rel="shortcut icon" href="https://d8ejoa1fys2rk.cloudfront.net/5.0.5/includes/img/icons/adventhealth.ico" />
+    
+
+
+    
+            <link
+                rel="stylesheet"
+                href="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/styles/css/notifications.css"
+            />
+            <link
+                rel="stylesheet"
+                href="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/styles/css/icons.css"
+            />
+            <link
+                rel="stylesheet"
+                href="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/styles/css/bootstrap.css"
+            />
+            <link
+                rel="stylesheet"
+                href="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/styles/css/base-unifiedheader.css"
+            />
+            <link
+                rel="stylesheet"
+                href="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/styles/css/modules.css"
+            />
+            <link
+                rel="stylesheet"
+                href="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/select2/dist/css/select2.css"
+            />
+
+
+<link rel="stylesheet" href="https://d8ejoa1fys2rk.cloudfront.net/5.0.5/includes/css/bynder/cookieBanner.css" />
+
+
+    <link href="/includes/css/bynder/header-admin.css" rel="stylesheet" />
+
+    
+    <style type="text/css">
+        html {
+            --headerHeight: 111px;
+        }
+    </style>
+
+<link rel="stylesheet" href="/v7/portal/portals/6143fef0-d258-42ed-8f88-888afdf2e99a/theme?format=css">
+
+    <link rel="stylesheet" href=https://d8ejoa1fys2rk.cloudfront.net/5.0.5/includes/themes/custom-adventhealth.css>
+
+
+    
+
+<script src="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/sentry/sentryHost.umd.js"></script>
+<script>
+    const dsn = 'https://3d37a43c135242e4a31d75cae152816d@sentry10.bynder.cloud/16';
+    const environment = 'flagship-global';
+
+    try {
+        if (!dsn) throw new Error("Sentry DSN not set");
+
+        window.SentryClient = SentryCustomClient.init({
+            environment,
+            dsn,
+        });
+    } catch (err) {
+        console.error("Sentry initialization failed", err);
+    }
+</script>
+
+
+    
+        <script src="https://cmp.osano.com/16BhTKTaZ1RPo6e4Z/53b4d552-7188-46c2-ad2e-8c4fa5638eb0/osano.js"></script>
+
+        <script>
+            try {
+                var privacyPolicyUrl = "";
+                var hasCustomPrivacyPolicy = true;
+                var hasAnalytics = true;
+                var hasDowntimeNotification = true;
+                var downtimeNotificationExpiryDate = "2022-03-19 17:30";
+
+                if(downtimeNotificationExpiryDate) {
+                    var downtimeNotificationExpiryDateObj = new Date(downtimeNotificationExpiryDate).getTime();
+                    var currentDate = new Date().getTime();
+                    var hasDowntimeNotification = downtimeNotificationExpiryDateObj >= currentDate;
+                }
+
+                function openPrivacyPolicyModal(event) {
+                    event.preventDefault();
+                    document.dispatchEvent(new Event('open-privacy-policy-modal'));
+                }
+
+                function removeCookieByInnerText(resultList, text){
+                    const removeCookie = () => {
+                        for (const node of resultList.children) {
+                            if(node.innerText?.includes(text)) {
+                                node.remove();
+                            }
+                        }
+                    }
+
+                    // Observe async changes (api)
+                    const observer = new MutationObserver(removeCookie);
+                    observer.observe(resultList, { childList: true });
+
+                    // Remove if the list is already rendered
+                    removeCookie();
+                }
+
+                Osano.cm.addEventListener('osano-cm-initialized', () => {
+                    // Add event listener on main banner
+                    var mainBannerLink = document.querySelector('a.osano-cm-link');
+
+                    if(mainBannerLink) {
+                        mainBannerLink.href = privacyPolicyUrl || mainBannerLink.href;
+
+                        if(!privacyPolicyUrl && hasCustomPrivacyPolicy) {
+                            mainBannerLink.href = '';
+                            mainBannerLink.addEventListener('click', openPrivacyPolicyModal);
+                        }
+                    }
+
+                    // Set cookie tab event
+                    const cookieTab = document.getElementById('cookie-preferences-button');
+                    if(cookieTab) {
+                        cookieTab.addEventListener('click', function(event) {
+                            event.preventDefault();
+                            Osano.cm.showDrawer('osano-cm-dom-info-dialog-open');
+                        });
+                    }
+                });
+
+                // Add event listener on side panel
+                Osano.cm.addEventListener('osano-cm-ui-changed', (component, stateChange) => {
+                    // Hide useless marketing option on drawer and dialog
+                    if (component !== 'widget' && stateChange === 'show') {
+                        const marketingLabel = document.querySelector("[for=osano-cm-"+component+"-toggle--category_MARKETING]");
+                        const personalizationLabel = document.querySelector("[for=osano-cm-"+component+"-toggle--category_PERSONALIZATION]");
+                        const dontSellLabel = document.querySelector("[for=osano-cm-"+component+"-toggle--category_OPT_OUT]");
+                        const storageLabel = document.querySelector('.osano-cm-content .osano-cm-link--type_manage');
+
+                        if(storageLabel) {
+                            storageLabel.textContent = 'Cookie Preferences';
+                        }
+
+                        if(marketingLabel){
+                            marketingLabel.parentElement.hidden = true;
+                        }
+
+                        if(marketingLabel){
+                            personalizationLabel.parentElement.hidden = true;
+                        }
+
+                        if(dontSellLabel){
+                            dontSellLabel.parentElement.hidden = true;
+                        }
+                    }
+
+                    if (component === 'drawer' && stateChange === 'show') {
+                        // Set custom privacy policy
+                        var sidePanelLink = document.querySelector('.osano-cm-info--open a.osano-cm-link');
+
+                        if(sidePanelLink) {
+                            sidePanelLink.href = privacyPolicyUrl || sidePanelLink.href;
+                            if(!privacyPolicyUrl && hasCustomPrivacyPolicy) {
+                                sidePanelLink.href = '';
+                                sidePanelLink.addEventListener('click', openPrivacyPolicyModal);
+                            }
+                        }
+
+                        // Hide not used cookies (GA)
+                        if(!hasAnalytics) {
+                            const resultList = document.getElementById('osano-cm-ANALYTICS_disclosures');
+
+                            removeCookieByInnerText(resultList, 'Google LLC');
+                        }
+
+                        // hide portal-notification cookie if it's not active
+                        if(!hasDowntimeNotification) {
+                            const resultList = document.getElementById('osano-cm-ESSENTIAL_disclosures');
+
+                            removeCookieByInnerText(resultList, 'portal-notification');
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('An Error occured while displaying cookie banner:', error);
+            }
+        </script>
+
+        <meta name="b-ds-new-branding" content="" data-b-ds-new-branding="on">
+</head>
+
+
+    <body class="guidelines">
+
+
+
+<script>
+    window.bynder = window.bynder || {};
+    window.bynder.Config = window.bynder.Config || {};
+    window.bynder.Config.hasFeature = window.bynder.Config.hasFeature || function(feature) {
+            const features = [
+                    'version-upload-message',
+                    'dashboard-slider',
+                    'workflow-jobexport',
+                    'workflow-add-job-to-asset',
+                    'download-emailnotification',
+                    'mark-as-public',
+                    'version-updater-update-with-xmp',
+                    'metadata-write-csv',
+                    'auditshowfilename',
+                    'hide-brandsnavigation',
+                    'upload-manual-derivatives',
+                    'hide-brands',
+                    'spotlight-help-modal',
+                    'pyusermanagement',
+                    'waiting-room-filtering',
+                    'workflow-importfrombynder',
+                    '3d-previews',
+                    'sso-debug',
+                    'change-history',
+                    'customlanguage',
+                    'detailed-delivery-metrics',
+                    'focus-point',
+                    'crop-canvas',
+                    'unified-header-rollout',
+                    'video-filter-duration',
+                    'ai-duplicate-manager',
+                    'workflow-select2',
+                    'bynder-support-opt-in',
+                    'archived-asset-notification',
+                    'news-slider',
+                    'spotlight-recent-searches',
+                    'download-toggle',
+                    'dat',
+                    'ai-similarity-search',
+                    'dropbox-receiver',
+                    'external-option-links',
+                    'workflow-export-annotation-pdf',
+                    'taxonomy-csv-import',
+                    'ai-text-in-image-search',
+                    'disable-pdf',
+                    'ai-speech-to-text',
+                    'default-filename-as-title',
+                    'files-service-pod',
+                    'download-additionals',
+                    'files-service-wf-uploaders',
+                    'media-detail-share',
+                    'workflow-use-bynder-metaproperties',
+                    'workflow-edit-inactive-stages',
+                    'workflow-campaignoverviewhomepage',
+                    'hide-categories',
+                    'disable-file-merge',
+                    'version-updater',
+                    'gdpr-message',
+                    'pod-diy',
+                    'files-service',
+                    'wr-mpo-approve-download-requests',
+                    'disable-media-webversion',
+                    'save-search-filter',
+                    'improved-taxonomy-management',
+                    'hide-bynder',
+                    'search-active-assets',
+                    'appcues',
+                    'crop',
+                    'create-excel-thumbnail',
+                    'alternative-asset-detail-view',
+                    'metadata-presets-sharing',
+                    'custom-thumbnails',
+                    'duplicate-view',
+                    'public-links',
+                    'popover',
+                    'dashboard',
+                    'user-outofoffice',
+                    'collection-options',
+                    'workflow-beta',
+                    'legacy-oauth1',
+                    'asset-permission-viewer',
+                    'compact',
+                    'collection-embed',
+                    'disable-videoautoplay',
+                    'download-request',
+                    'predictable-url',
+                    'oauth2-testing',
+                    'autotags',
+                    'configure-duplicate-options',
+                    'files-service-main-uploader',
+                    'news',
+                    'workflow-duedate-highlight',
+                    'workflow-short-email-subjects',
+                    'metadata-presets',
+                    'download-preselect',
+            ]
+
+        return features.includes(feature);
+    }
+
+    // Used by asset-fronted-sdk
+    window.bynder.Uploader = {
+            chunkSize: 5 * 1024 * 1024,
+    }
+</script>
+
+<aside class="notifications-panel" aria-expanded="false">
+    <section class="notifications-left has-content">
+        <ul class="notifications-flyover">
+
+        </ul>
+    </section>
+    <section class="notifications-right">
+        <header class="notifications-header">
+            Notification center
+            <div class="notifications-close">
+                <button class="icon-group-close">
+                    <i class="fa fa-times-circle"></i>
+                </button>
+            </div>
+        </header>
+        <ul class="notifications-list">
+        </ul>
+    </section>
+</aside>
+
+
+
+
+    
+
+    <div id="rootMessageBox" class="update info"></div>
+    <div id="rootHeader" data-backend="pybynder"></div>
+
+    <header id="mainHeader" class="base" style="display:none">
+        <div class="admin-bar clearfix" id="rootHeaderTopBar"></div>
+        <section class="nav-bar clearfix" id="rootHeaderNavigation"></section>
+    </header>
+
+    
+    <script src="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/jquery/dist/jquery.js"></script>
+    <script src="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/jquery-ui/jquery-ui.js"></script>
+    <script src="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/jquery.role/lib/jquery.role.js"></script>
+    <script src="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/plupload/js/moxie.js"></script>
+    <script src="https://d8ejoa1fys2rk.cloudfront.net/frontend/0.1.383/deps/plupload/js/plupload.dev.js"></script>
+    <script type="text/javascript" src="/v7/header/js/app.bundle.js"></script>
+
+
+
+    
+    <div id="root" data-account-id="6143fef0-d258-42ed-8f88-888afdf2e99a" />
+
+
+    
+
+
+
+
+
+
+
+<script>
+    (function() {
+        const baseUrl = '/v7/guidelines/js/';
+        const manifest = 'manifest.json';
+        const fallbackFile = 'app.bundle.js';
+
+        function appendScript(url) {
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = url;
+            document.body.appendChild(script);
+        }
+        
+        function loadFromManifest(url) {
+            fetch(url + manifest)
+                .then(function(response) {
+                    return response.json();
+                })
+                .then(function(data) {
+                    const entryFile = data['index.html'].file;
+                    if (entryFile) {
+                        appendScript(url + entryFile);
+                    }
+                })
+                .catch(function(e) {
+                    console.error('Failed to load manifest:', e);
+                    appendScript(url + fallbackFile);
+                });
+        }
+
+        loadFromManifest(baseUrl);
+    })();
+</script>
+
+    </div> <!-- End Container -->
+    <div id="dialog-region" class="modal fade"></div>
+
+    
+
+    <script>
+        const trackingId = 'UA-197843730-1';
+
+        if (trackingId) {
+            if (!window.bynder) {
+                window.bynder = {}
+            }
+            window.bynder.guidelinesAnalyticsTrackingId = trackingId;
+        }
+    </script>
+
+
+
+
+<div id="rootPrivacyPolicyModal"></div>
+<div
+    id="bynderParamountRoot"
+    style="display: none;"
+></div>
+<script>
+        const baseUrl = '/v7/paramount/js/';
+
+    const manifest = 'manifest.json';
+    const scriptId =  'paramount-microfrontend-script';
+    const localUrl = 'https://localhost:3018/';
+    const environName = 'flagship-global';
+
+    const isDevelopment = environName === 'development' || baseUrl.includes('bynder-frontend');
+
+    function appendScript(url){
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.src = url;
+        script.setAttribute('id', scriptId);
+        document.body.appendChild(script);
+    };
+
+    function getAppBundle( url, callback ) {
+        fetch(url + manifest).then(function(response) {
+            return response.json();
+        })
+        .then(function (data) {
+            var value = data['app.js'];
+            appendScript(url + value)
+        })
+        .catch(function(e){
+            callback(e)
+        })
+    }
+
+    if(isDevelopment) {
+        getAppBundle(localUrl, function () {
+            getAppBundle(baseUrl, function (e) {
+                console.error(e)
+            })
+        })
+    }
+    else {
+        getAppBundle(baseUrl, function (e) {
+            console.error(e)
+        })
+    }
+</script>
+<script src="https://d8ejoa1fys2rk.cloudfront.net/pynder/microfrontends/0.1.85/app.bundle.js"></script>
+
+
+    
+
+
+<script type="text/javascript">
+    function deleteCookies(names) {
+        names.forEach(name => {
+            document.cookie = name + '=; expires=Thu, 30 Jun 2024 00:00:01 GMT; path=/';
+        });
+    }
+
+    deleteCookies(['AMP_13ccbb3500', 'AMP_ca378e6cd9', 'AMP_cfcc16528b', 'AMP_TEST', 'AMP_TLDTEST']);
+
+        function getCFUUIDFromUUID(UUID) {
+            return UUID.replace(/-([^-]*)$/, '$1').toUpperCase();
+        }
+
+        function getAmplitudeSessionId() {
+            function sessionIsExpired(sessionExpirationTimestamp) {
+                if (!sessionExpirationTimestamp) {
+                    return true;
+                }
+                return new Date(sessionExpirationTimestamp) < new Date();
+            }
+
+            var sessionId = localStorage.getItem('amplitude.session_id');
+            var sessionExpirationTimestamp = localStorage.getItem('amplitude.session_expiration_timestamp');
+
+            if (!sessionId || sessionIsExpired(sessionExpirationTimestamp)) {
+                sessionId = new Date().getTime();
+                localStorage.setItem('amplitude.session_id', sessionId);
+            }
+
+            var SESSION_EXPIRED_AFTER_MIN = 30;
+            sessionExpirationTimestamp = new Date().setMinutes(
+                new Date().getMinutes() + SESSION_EXPIRED_AFTER_MIN
+            );
+            localStorage.setItem('amplitude.session_expiration_timestamp', sessionExpirationTimestamp);
+
+            return sessionId;
+        }
+
+            window.amplitude = null;
+
+        /* Anonymize all PII
+        * Use this function instead of analytics.track
+        */
+        var bynder = bynder ? bynder : {};
+        bynder.track = function (title, props) {
+            return amplitude
+                ? amplitude.track(title, props)
+                : null;
+        };
+</script>
+
+    
+
+        <script type="text/javascript">
+    var bynder = bynder ? bynder : {};
+    bynder.track = function (title, props) {};
+    
+</script>
+
+
+
+    <link rel="stylesheet" type="text/css" href="//fast.appcues.com/appcues.min.css">
+
+<script type="text/javascript">
+
+  // Tell the Appcues script to defer defining itself as an AMD module 
+  window.AppcuesSettings = {
+    skipAMD: true
+  };
+
+  (function() {
+    if (!window.AppcuesReady) {
+      window.AppcuesReady = function(callback) {
+        callback && window.AppcuesReady.queue.push(callback);
+        if (window.Appcues) {
+          while (window.AppcuesReady.queue.length) {
+            cb = window.AppcuesReady.queue.shift();
+            if (typeof cb === 'function') cb();
+          }
+        }
+      };
+      window.AppcuesReady.queue = [];
+    }
+  })()
+</script>
+
+<script type="text/javascript">
+
+  var appcuesId = "";
+  var appcuesData = {};  
+  var isUserTrackable = "False" === "True" ? true : false;
+
+  if (isUserTrackable) {
+    // uuid to coldfusion uuid
+    appcuesId = "None".replace(/-([^-]*)$/, '$1').toUpperCase();
+  }
+
+  AppcuesReady(function() {
+    Appcues.identify(appcuesId, appcuesData);
+  });
+</script>
+
+<script src="//fast.appcues.com/17583.js" async defer onload="AppcuesReady()"></script>
+
+
+
+    <style>
+        footer.fixed .footer-btns {
+            list-style: none;
+            margin: 0;
+        }
+
+        footer.fixed .footer-btn {
+            box-sizing: content-box;
+            cursor: pointer;
+        }
+
+        .osano-cm-widget{
+            display: none;
+        } 
+    </style>
+
+    <footer class="fixed">
+        <ul class="footer-btns clearfix">
+            <li>
+                <a href="#" id="cookie-preferences-button" class="footer-btn">
+                    Cookies
+                </a>
+            </li>
+        </ul>
+    </footer>
+
+</body>
+</html>
