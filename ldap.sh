@@ -65,7 +65,7 @@ DOMAIN='${DOMAIN_NAME}'
 EOF
 
     # Add krb5.conf if not present
-    cat > /etc/krb5.conf <<EOF
+cat > /etc/krb5.conf <<EOF
 [libdefaults]
   default_realm = ${DOMAIN_NAME^^}
   dns_lookup_realm = true
@@ -77,7 +77,7 @@ fi
 echo "📥 Installing required packages..."
 if [[ "$OS" == "ubuntu" || "$OS" == "debian" ]]; then
     apt update
-    apt install -y realmd sssd sssd-tools adcli samba-common-bin samba-libs oddjob oddjob-mkhomedir packagekit sudo
+    apt install -y realmd sssd sssd-tools adcli samba-common-bin samba-libs oddjob oddjob-mkhomedir packagekit sudo krb5-user 
 
 elif [[ "$OS" =~ ^(centos|rhel|rocky|almalinux)$ ]]; then
     yum install -y realmd sssd adcli samba-common samba-common-tools oddjob oddjob-mkhomedir sssd-tools krb5-workstation sudo
